@@ -151,7 +151,7 @@ export default function VideoGenerator() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="bg-white rounded-xl shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">创建短视频</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">菜肴短视频生成</h1>
         
         <div className="space-y-6">
           <div>
