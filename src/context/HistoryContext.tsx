@@ -31,6 +31,7 @@ interface HistoryContextType {
   history: ProductRecord[];
   addRecord: (record: ProductRecord) => void;
   clearHistory: () => void;
+  updateVideoStats: (recordId: number, dishName: string, videoIndex: number, stats: VideoStats) => void;
 }
 
 const HistoryContext = createContext<HistoryContextType | undefined>(undefined);
@@ -46,8 +47,36 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
     setHistory([]);
   };
 
+  const updateVideoStats = (recordId: number, dishName: string, videoIndex: number, stats: VideoStats) => {
+    setHistory(prev => prev.map(record => {
+      if (record.id === recordId) {
+        return {
+          ...record,
+          dishes: record.dishes.map(dish => {
+            if (dish.dishName === dishName) {
+              return {
+                ...dish,
+                videos: dish.videos.map((video, idx) => {
+                  if (idx === videoIndex) {
+                    return {
+                      ...video,
+                      stats: stats
+                    };
+                  }
+                  return video;
+                })
+              };
+            }
+            return dish;
+          })
+        };
+      }
+      return record;
+    }));
+  };
+
   return (
-    <HistoryContext.Provider value={{ history, addRecord, clearHistory }}>
+    <HistoryContext.Provider value={{ history, addRecord, clearHistory, updateVideoStats }}>
       {children}
     </HistoryContext.Provider>
   );

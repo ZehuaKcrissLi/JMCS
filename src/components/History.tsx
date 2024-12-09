@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Play, TrendingUp, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Play, ChevronLeft, ChevronRight, Trash2, Edit2 } from 'lucide-react';
 import { useHistory } from '../context/HistoryContext';
+import StatsDisplay from './StatsDisplay';
+import StatsForm from './StatsForm';
 
 interface VideoStats {
   views: number;
@@ -80,60 +82,10 @@ function VideoCarousel({ videos, onVideoChange }: VideoCarouselProps) {
   );
 }
 
-interface StatsDisplayProps {
-  stats: VideoStats;
-}
-
-function StatsDisplay({ stats }: StatsDisplayProps) {
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
-      <div>
-        <p className="text-sm text-gray-500 mb-1">播放量</p>
-        <div className="flex items-center gap-1">
-          <TrendingUp className="w-4 h-4 text-blue-500" />
-          <span className="text-xl font-semibold">
-            {stats.views.toLocaleString()}
-          </span>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-sm text-gray-500 mb-1">涨粉量</p>
-        <div className="flex items-center gap-1">
-          <span className="text-green-500 text-lg font-medium">+</span>
-          <span className="text-xl font-semibold">
-            {stats.followers}
-          </span>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-sm text-gray-500 mb-1">3/5s停留</p>
-        <p className="text-xl font-semibold">
-          {stats.retention}%
-        </p>
-      </div>
-
-      <div>
-        <p className="text-sm text-gray-500 mb-1">转化率</p>
-        <p className="text-xl font-semibold">
-          {stats.conversion}%
-        </p>
-      </div>
-
-      <div>
-        <p className="text-sm text-gray-500 mb-1">销量</p>
-        <p className="text-xl font-semibold">
-          {stats.sales}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default function History() {
-  const { history, clearHistory } = useHistory();
+  const { history, clearHistory, updateVideoStats } = useHistory();
   const [currentVideoIndices, setCurrentVideoIndices] = useState<Record<string, number>>({});
+  const [editingStats, setEditingStats] = useState<string | null>(null);
 
   const handleVideoChange = (dishId: string, index: number) => {
     setCurrentVideoIndices(prev => ({
@@ -153,6 +105,11 @@ export default function History() {
       second: '2-digit',
       hour12: false
     }).format(date);
+  };
+
+  const handleSaveStats = (recordId: number, dishName: string, videoIndex: number, stats: VideoStats) => {
+    updateVideoStats(recordId, dishName, videoIndex, stats);
+    setEditingStats(null);
   };
 
   return (
@@ -182,6 +139,7 @@ export default function History() {
               {record.dishes.map((dish) => {
                 const currentVideoIndex = currentVideoIndices[dish.dishName] || 0;
                 const currentVideo = dish.videos[currentVideoIndex];
+                const isEditing = editingStats === `${record.id}-${dish.dishName}-${currentVideoIndex}`;
 
                 return (
                   <div key={dish.dishName} className="border-t pt-6">
@@ -192,14 +150,32 @@ export default function History() {
                       />
 
                       <div className="md:col-span-2">
-                        <div className="mb-6">
-                          <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                        <div className="flex justify-between items-center mb-6">
+                          <h3 className="text-xl font-semibold text-gray-800">
                             {dish.dishName} - 视频 {currentVideoIndex + 1}
                           </h3>
+                          {!isEditing && (
+                            <button
+                              onClick={() => setEditingStats(`${record.id}-${dish.dishName}-${currentVideoIndex}`)}
+                              className="flex items-center px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100"
+                            >
+                              <Edit2 className="h-4 w-4 mr-1.5" />
+                              编辑数据
+                            </button>
+                          )}
                         </div>
 
-                        {currentVideo.stats && (
+                        {isEditing ? (
+                          <StatsForm
+                            initialStats={currentVideo.stats}
+                            onSave={(stats) => handleSaveStats(record.id, dish.dishName, currentVideoIndex, stats)}
+                          />
+                        ) : currentVideo.stats ? (
                           <StatsDisplay stats={currentVideo.stats} />
+                        ) : (
+                          <div className="text-center py-8 text-gray-500">
+                            暂无数据，点击编辑按钮添加
+                          </div>
                         )}
                       </div>
                     </div>
