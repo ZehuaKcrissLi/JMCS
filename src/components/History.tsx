@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Play, ChevronLeft, ChevronRight, Trash2, Edit2 } from 'lucide-react';
+import { Trash2, Edit2 } from 'lucide-react';
 import { useHistory } from '../context/HistoryContext';
 import StatsDisplay from './StatsDisplay';
 import StatsForm from './StatsForm';
+import { VideoCarousel } from './VideoGenerator/VideoCarousel';
 
 interface VideoStats {
   views: number;
@@ -10,76 +11,6 @@ interface VideoStats {
   retention: number;
   conversion: number;
   sales: number;
-}
-
-interface VideoCarouselProps {
-  videos: {
-    id: number;
-    title: string;
-    thumbnail: string;
-    stats: VideoStats | null;
-  }[];
-  onVideoChange: (index: number) => void;
-}
-
-function VideoCarousel({ videos, onVideoChange }: VideoCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const nextVideo = () => {
-    const newIndex = (currentIndex + 1) % videos.length;
-    setCurrentIndex(newIndex);
-    onVideoChange(newIndex);
-  };
-
-  const prevVideo = () => {
-    const newIndex = (currentIndex - 1 + videos.length) % videos.length;
-    setCurrentIndex(newIndex);
-    onVideoChange(newIndex);
-  };
-
-  const currentVideo = videos[currentIndex];
-
-  return (
-    <div className="relative">
-      <div className="relative aspect-[9/16] bg-gray-100 rounded-xl overflow-hidden">
-        <img
-          src={currentVideo.thumbnail}
-          alt={currentVideo.title}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <button className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors">
-            <Play className="w-8 h-8 text-white" fill="white" />
-          </button>
-        </div>
-      </div>
-
-      {videos.length > 1 && (
-        <>
-          <button
-            onClick={prevVideo}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-            aria-label="Previous video"
-          >
-            <ChevronLeft className="w-6 h-6 text-white" />
-          </button>
-          <button
-            onClick={nextVideo}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-            aria-label="Next video"
-          >
-            <ChevronRight className="w-6 h-6 text-white" />
-          </button>
-        </>
-      )}
-
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-        <div className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 text-white text-sm">
-          {currentIndex + 1} / {videos.length}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function History() {
@@ -141,11 +72,16 @@ export default function History() {
                 const currentVideo = dish.videos[currentVideoIndex];
                 const isEditing = editingStats === `${record.id}-${dish.dishName}-${currentVideoIndex}`;
 
+                const carouselVideos = dish.videos.map(v => ({
+                  id: v.id,
+                  url: v.thumbnail
+                }));
+
                 return (
                   <div key={dish.dishName} className="border-t pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <VideoCarousel 
-                        videos={dish.videos} 
+                        videos={carouselVideos}
                         onVideoChange={(index) => handleVideoChange(dish.dishName, index)}
                       />
 
