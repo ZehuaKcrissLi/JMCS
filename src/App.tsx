@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import VideoGenerator from './components/VideoGenerator';
+import VideoGenerator from './components/VideoGenerator/index';
 import History from './components/History';
 import { HistoryProvider } from './context/HistoryContext';
 

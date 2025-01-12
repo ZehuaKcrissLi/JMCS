@@ -1,11 +1,8 @@
 import { VideoGenerateRequest, VideoResponse, PromptGenerateRequest } from '../types/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-
 export const videoService = {
   async generateVideos(data: VideoGenerateRequest): Promise<VideoResponse> {
     try {
-      // 开发阶段使用模拟数据
       return mockGenerateVideos(data);
     } catch (error) {
       console.error('Error generating videos:', error);
@@ -53,20 +50,19 @@ export const videoService = {
 // Mock functions
 function mockGenerateVideos(data: VideoGenerateRequest): Promise<VideoResponse> {
   return new Promise((resolve) => {
-    setTimeout(() => {
-      const mockVideos = data.dishes.reduce((acc, dish) => {
-        acc[dish] = Array(5).fill(0).map((_, i) => ({
-          id: i + 1,
-          url: `https://images.unsplash.com/photo-${1546069901 + i}-ba9599a7e63c`,
-        }));
-        return acc;
-      }, {} as VideoResponse['data']);
+    // 为每个菜品生成5个相同的视频
+    const mockVideos = data.dishes.reduce((acc, dish) => {
+      acc[dish] = Array(5).fill(0).map((_, i) => ({
+        id: i + 1,
+        url: '/videos/demo/demo.mp4'  // 所有轮播项都使用同一个视频
+      }));
+      return acc;
+    }, {} as VideoResponse['data']);
 
-      resolve({
-        success: true,
-        data: mockVideos
-      });
-    }, 1500);
+    resolve({
+      success: true,
+      data: mockVideos
+    });
   });
 }
 

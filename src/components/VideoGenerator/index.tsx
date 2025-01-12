@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Play, RefreshCw, MessageSquarePlus, RotateCcw } from 'lucide-react';
 import { useHistory } from '../../context/HistoryContext';
 import { videoService } from '../../services/api';
