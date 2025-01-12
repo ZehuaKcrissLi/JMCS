@@ -20,6 +20,7 @@ export default function VideoGenerator() {
   const { addRecord } = useHistory();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [isPromptComplete, setIsPromptComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleDishSelect = (dish: string) => {
@@ -36,19 +37,22 @@ export default function VideoGenerator() {
     }
 
     setIsGeneratingPrompt(true);
+    setIsPromptComplete(false);
     setShowPrompt(true);
     setPrompt('');
 
     try {
       const productName = PRODUCTS.find(p => p.id === selectedProduct)?.name || '';
-      const dishNames = selectedDishes.map(id => DISH_NAMES[id]);
+      let currentPrompt = '';
 
       await videoService.generatePrompt(
-        { productName, dishes: dishNames },
-        (chunk) => {
-          setPrompt(currentPrompt => (currentPrompt || '') + chunk);
+        { productName, dishes: selectedDishes },
+        (chunk: string) => {
+          currentPrompt += chunk;
+          setPrompt(currentPrompt);
         }
       );
+      setIsPromptComplete(true);
     } catch (error) {
       console.error('Error generating prompt:', error);
       alert('生成文案失败，请重试');
@@ -129,6 +133,7 @@ export default function VideoGenerator() {
                 setGeneratedVideos([]);
                 setShowPrompt(false);
                 setPrompt('');
+                setIsPromptComplete(false);
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
             >
@@ -203,9 +208,9 @@ export default function VideoGenerator() {
             
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || !selectedProduct || selectedDishes.length === 0 || !prompt}
+              disabled={isGenerating || !selectedProduct || selectedDishes.length === 0 || !prompt || !isPromptComplete || isGeneratingPrompt}
               className={`w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-md ${
-                isGenerating || !selectedProduct || selectedDishes.length === 0 || !prompt
+                isGenerating || !selectedProduct || selectedDishes.length === 0 || !prompt || !isPromptComplete || isGeneratingPrompt
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-purple-600 hover:bg-purple-700'
               }`}
