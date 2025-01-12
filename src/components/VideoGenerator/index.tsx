@@ -1,93 +1,10 @@
-import React, { useState } from 'react';
-import { Play, RefreshCw, MessageSquarePlus, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useHistory } from '../context/HistoryContext';
-
-interface Product {
-  id: number;
-  name: string;
-  dishes: string[];
-}
-
-interface GeneratedVideo {
-  id: number;
-  thumbnail: string;
-}
-
-interface GeneratedDishVideos {
-  dishName: string;
-  videos: GeneratedVideo[];
-}
-
-const products: Product[] = [
-  { 
-    id: 1, 
-    name: '小酥肉粉', 
-    dishes: ['炸小酥肉', '香酥鸡块', '酥炸虾', '炸鱼排'] 
-  },
-  { 
-    id: 2, 
-    name: '烤肉料', 
-    dishes: ['烤羊肉串', '烤鸡翅', '烤五花肉', '烤生蚝'] 
-  },
-];
-
-const demoThumbnails = [
-  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
-  'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445',
-  'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0',
-  'https://images.unsplash.com/photo-1432139555190-58524dae6a55',
-  'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327'
-];
-
-function VideoCarousel({ videos }: { videos: GeneratedVideo[] }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const nextVideo = () => {
-    setCurrentIndex((prev) => (prev + 1) % videos.length);
-  };
-
-  const prevVideo = () => {
-    setCurrentIndex((prev) => (prev - 1 + videos.length) % videos.length);
-  };
-
-  return (
-    <div className="relative aspect-[9/16] bg-gray-100 rounded-lg overflow-hidden">
-      <img
-        src={videos[currentIndex].thumbnail}
-        alt="Video thumbnail"
-        className="w-full h-full object-cover"
-      />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <button className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors">
-          <Play className="w-6 h-6 text-white" fill="white" />
-        </button>
-      </div>
-      
-      {videos.length > 1 && (
-        <>
-          <button
-            onClick={prevVideo}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5 text-white" />
-          </button>
-          <button
-            onClick={nextVideo}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-          >
-            <ChevronRight className="w-5 h-5 text-white" />
-          </button>
-        </>
-      )}
-      
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
-        <div className="bg-black/50 backdrop-blur-sm rounded-full px-2 py-1 text-white text-xs">
-          {currentIndex + 1} / {videos.length}
-        </div>
-      </div>
-    </div>
-  );
-}
+import React, { useState, useRef } from 'react';
+import { Play, RefreshCw, MessageSquarePlus, RotateCcw } from 'lucide-react';
+import { useHistory } from '../../context/HistoryContext';
+import { videoService } from '../../services/api';
+import { PRODUCTS, DISH_NAMES } from '../../config/products';
+import { VideoCarousel } from './VideoCarousel';
+import type { VideoGenerateRequest } from '../../types/api';
 
 export default function VideoGenerator() {
   const { addRecord } = useHistory();
@@ -97,7 +14,10 @@ export default function VideoGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
-  const [generatedVideos, setGeneratedVideos] = useState<GeneratedDishVideos[]>([]);
+  const [generatedVideos, setGeneratedVideos] = useState<Array<{
+    dishName: string;
+    videos: Array<{ id: number; url: string; }>;
+  }>>([]);
 
   const handleDishSelect = (dish: string) => {
     setSelectedDishes(prev => 
@@ -118,30 +38,15 @@ export default function VideoGenerator() {
     setPrompt('');
 
     try {
-      // 模拟流式返回
-      const mockText = `为${selectedProduct}制作${selectedDishes.join('、')}的视频文案：\n\n孩子放学回家想吃小酥肉，自己在家就能做，又香又脆，和外面火锅店卖的一模一样。小酥肉酥脆的关键就是这个小酥肉专用粉，用它不管是炸鸡翅、炸丸子、炸蔬菜都特别酥脆。把小酥肉粉用水搅成这样的酸奶状，倒入腌制好的肉中，油温六成热，下锅炸炸至金黄，捞出外脆里嫩，真的太好吃了。`;
+      const productName = PRODUCTS.find(p => p.id === selectedProduct)?.name || '';
+      const dishNames = selectedDishes.map(id => DISH_NAMES[id]);
 
-
-      for (let i = 0; i < mockText.length; i += 5) {
-        const chunk = mockText.slice(i, i + 5);
-        await new Promise(resolve => setTimeout(resolve, 100));
-        setPrompt(prev => prev + chunk);
-      }
-
-      // TODO: 替换为实际的API调用
-      // const response = await fetch('/api/generate-prompt', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ product: selectedProduct, dishes: selectedDishes })
-      // });
-      // const reader = response.body.getReader();
-      // const decoder = new TextDecoder();
-      // while (true) {
-      //   const { done, value } = await reader.read();
-      //   if (done) break;
-      //   const chunk = decoder.decode(value);
-      //   setPrompt(prev => prev + chunk);
-      // }
+      await videoService.generatePrompt(
+        { productName, dishes: dishNames },
+        (chunk) => {
+          setPrompt(prev => prev + chunk);
+        }
+      );
     } catch (error) {
       console.error('Error generating prompt:', error);
       alert('生成文案失败，请重试');
@@ -150,7 +55,7 @@ export default function VideoGenerator() {
     }
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!selectedProduct || selectedDishes.length === 0) {
       alert('请选择产品和至少一个菜品');
       return;
@@ -158,39 +63,47 @@ export default function VideoGenerator() {
 
     setIsGenerating(true);
 
-    // 模拟生成过程
-    setTimeout(() => {
-      const newGeneratedVideos = selectedDishes.map(dish => ({
-        dishName: dish,
-        videos: Array(5).fill(0).map((_, i) => ({
-          id: i + 1,
-          thumbnail: demoThumbnails[i % demoThumbnails.length]
-        }))
-      }));
+    try {
+      const request: VideoGenerateRequest = {
+        productId: selectedProduct,
+        dishes: selectedDishes,
+        prompt: prompt || undefined
+      };
 
-      setGeneratedVideos(newGeneratedVideos);
+      const response = await videoService.generateVideos(request);
       
-      // Add to history
-      addRecord({
-        id: Date.now(),
-        productName: selectedProduct,
-        timestamp: Date.now(),
-        dishes: newGeneratedVideos.map(dish => ({
-          dishName: dish.dishName,
-          videos: dish.videos.map(v => ({
-            id: v.id,
-            title: `${selectedProduct} - ${dish.dishName} ${v.id}`,
-            thumbnail: v.thumbnail,
-            stats: null
-          }))
-        }))
-      });
+      if (response.success) {
+        const newGeneratedVideos = Object.entries(response.data).map(([dishId, videos]) => ({
+          dishName: DISH_NAMES[dishId],
+          videos: videos
+        }));
 
+        setGeneratedVideos(newGeneratedVideos);
+        
+        addRecord({
+          id: Date.now(),
+          productName: PRODUCTS.find(p => p.id === selectedProduct)?.name || '',
+          timestamp: Date.now(),
+          dishes: newGeneratedVideos.map(dish => ({
+            dishName: dish.dishName,
+            videos: dish.videos.map(v => ({
+              id: v.id,
+              title: `${dish.dishName} - 视频 ${v.id}`,
+              thumbnail: v.url,
+              stats: null
+            }))
+          }))
+        });
+      }
+    } catch (error) {
+      console.error('Error generating videos:', error);
+      alert('生成视频失败，请重试');
+    } finally {
       setIsGenerating(false);
-    }, 2000);
+    }
   };
 
-  const selectedProductDishes = products.find(p => p.name === selectedProduct)?.dishes || [];
+  const selectedProductDishes = PRODUCTS.find(p => p.id === selectedProduct)?.dishes || [];
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -214,8 +127,8 @@ export default function VideoGenerator() {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
             >
               <option value="">请选择产品</option>
-              {products.map((product) => (
-                <option key={product.id} value={product.name}>
+              {PRODUCTS.map((product) => (
+                <option key={product.id} value={product.id}>
                   {product.name}
                 </option>
               ))}
@@ -236,7 +149,7 @@ export default function VideoGenerator() {
                         : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
                     }`}
                   >
-                    {dish}
+                    {DISH_NAMES[dish]}
                   </button>
                 ))}
               </div>
