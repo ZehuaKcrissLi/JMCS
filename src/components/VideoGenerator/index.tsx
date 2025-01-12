@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Play, RefreshCw, MessageSquarePlus, RotateCcw } from 'lucide-react';
+import { MessageSquarePlus, Play, RefreshCw, RotateCcw } from 'lucide-react';
 import { useHistory } from '../../context/HistoryContext';
 import { videoService } from '../../services/api';
 import { PRODUCTS, DISH_NAMES } from '../../config/products';
 import { VideoCarousel } from './VideoCarousel';
-import type { VideoGenerateRequest } from '../../types/api';
+import type { VideoGenerateRequest, Video } from '../../types/api';
 import { useVideoGenerator } from '../../context/VideoGeneratorContext';
 
 export default function VideoGenerator() {
@@ -22,6 +22,7 @@ export default function VideoGenerator() {
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [isPromptComplete, setIsPromptComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentVideos, setCurrentVideos] = useState<Record<string, number>>({});
 
   const handleDishSelect = (dish: string) => {
     setSelectedDishes(selectedDishes.includes(dish)
@@ -63,7 +64,7 @@ export default function VideoGenerator() {
 
   const handleGenerate = async () => {
     if (!selectedProduct || selectedDishes.length === 0 || !prompt) {
-      alert('请选择产品和菜品，并生成视频文案');
+      alert('请选择产品和菜品，并调用GPT生成视频文案');
       return;
     }
 
@@ -113,12 +114,79 @@ export default function VideoGenerator() {
     }
   };
 
+  const handleSplitVideo = (dishId: string, originalVideo: Video) => {
+    // 复制视频并更新状态
+    const updatedVideos = generatedVideos.map(dishVideos => {
+      if (dishVideos.dishName === DISH_NAMES[dishId]) {
+        // 复制原始视频两次，生成三个相同的视频
+        const newVideoList = [
+          originalVideo,
+          { ...originalVideo, id: originalVideo.id + 1 },
+          { ...originalVideo, id: originalVideo.id + 2 }
+        ];
+        return { ...dishVideos, videos: newVideoList };
+      }
+      return dishVideos;
+    });
+    
+    setGeneratedVideos(updatedVideos);
+
+    // 查找原始视频的历史记录以获取stats
+    const originalStats = generatedVideos
+      .find(dish => dish.dishName === DISH_NAMES[dishId])
+      ?.videos[0]?.stats || null;
+
+    // 更新当前视频的历史记录
+    const currentDishVideos = updatedVideos.find(
+      dish => dish.dishName === DISH_NAMES[dishId]
+    );
+
+    if (currentDishVideos) {
+      const historyUpdate = {
+        dishName: currentDishVideos.dishName,
+        videos: currentDishVideos.videos.map(video => ({
+          id: video.id,
+          title: `${currentDishVideos.dishName} - 视频 ${video.id}`,
+          thumbnail: video.url,
+          stats: video.stats || originalStats // 使用视频自己的stats或原始视频的stats
+        }))
+      };
+
+      // 更新历史记录中当前菜品的视频列表
+      addRecord({
+        id: Date.now(),
+        productName: PRODUCTS.find(p => p.id === selectedProduct)?.name || '',
+        timestamp: Date.now(),
+        dishes: generatedVideos.map(dish => 
+          dish.dishName === DISH_NAMES[dishId] 
+            ? historyUpdate 
+            : {
+                dishName: dish.dishName,
+                videos: dish.videos.map(v => ({
+                  id: v.id,
+                  title: `${dish.dishName} - 视频 ${v.id}`,
+                  thumbnail: v.url,
+                  stats: v.stats || null
+                }))
+              }
+        )
+      });
+    }
+  };
+
+  const handleVideoChange = (dishName: string, video: { id: number; url: string }) => {
+    setCurrentVideos(prev => ({
+      ...prev,
+      [dishName]: video.id
+    }));
+  };
+
   const selectedProductDishes = PRODUCTS.find(p => p.id === selectedProduct)?.dishes || [];
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="bg-white rounded-xl shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">创建短视频</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">创建混剪</h1>
         
         <div className="space-y-6">
           <div>
@@ -182,7 +250,7 @@ export default function VideoGenerator() {
               ) : (
                 <MessageSquarePlus className="h-4 w-4 mr-2" />
               )}
-              {isGeneratingPrompt ? '生成文案中...' : '生成视频文案'}
+              {isGeneratingPrompt ? '生成文案中...' : 'GPT生成视频文案'}
             </button>
 
             {showPrompt && (
@@ -235,16 +303,32 @@ export default function VideoGenerator() {
 
       {generatedVideos.length > 0 && !isLoading && (
         <div className="space-y-8">
-          {generatedVideos.map((dishVideos, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                {dishVideos.dishName}
-              </h2>
-              <div className="max-w-sm mx-auto">
-                <VideoCarousel videos={dishVideos.videos} />
+          {generatedVideos.map((dishVideos, index) => {
+            const dishId = Object.entries(DISH_NAMES).find(
+              ([_, name]) => name === dishVideos.dishName
+            )?.[0];
+
+            const currentVideoId = currentVideos[dishVideos.dishName] || dishVideos.videos[0].id;
+
+            return (
+              <div key={index} className="bg-white rounded-xl shadow-md p-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                  {dishVideos.dishName} - 视频 {currentVideoId}
+                </h2>
+                <div className="max-w-sm mx-auto">
+                  <VideoCarousel 
+                    videos={dishVideos.videos}
+                    onVideoChange={(video) => handleVideoChange(dishVideos.dishName, video)}
+                    onSplit={
+                      dishId && dishVideos.videos.length === 1
+                        ? () => handleSplitVideo(dishId, dishVideos.videos[0])
+                        : undefined
+                    }
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

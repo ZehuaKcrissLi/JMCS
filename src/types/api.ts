@@ -1,7 +1,26 @@
+export interface VideoStats {
+  views: number;
+  followers: number;
+  retention: number;
+  conversion: number;
+  sales: number;
+}
+
+export interface Video {
+  id: number;
+  url: string;
+  stats?: VideoStats | null;
+}
+
 export interface VideoGenerateRequest {
   productId: string;
   dishes: string[];
-  prompt?: string;
+  prompt: string;
+}
+
+export interface VideoGenerateResponse {
+  success: boolean;
+  data: Record<string, Video[]>;
 }
 
 export interface VideoResponse {
@@ -12,15 +31,6 @@ export interface VideoResponse {
       url: string;
     }[];
   };
-}
-
-export interface VideoStats {
-  views: number;
-  followers: number;
-  retention_3: number;
-  retention_5: number;
-  conversion: number;
-  sales: number;
 }
 
 export interface PromptGenerateRequest {
