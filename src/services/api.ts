@@ -54,7 +54,7 @@ function mockGenerateVideos(data: VideoGenerateRequest): Promise<VideoResponse> 
     const mockVideos = data.dishes.reduce((acc, dish) => {
       acc[dish] = Array(5).fill(0).map((_, i) => ({
         id: i + 1,
-        url: '/videos/demo/demo.mp4'  // 所有轮播项都使用同一个视频
+        url: '/videos/demo/demo.mp4'  // 使用以/开头的绝对路径
       }));
       return acc;
     }, {} as VideoResponse['data']);

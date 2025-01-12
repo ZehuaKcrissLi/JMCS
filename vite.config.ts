@@ -7,13 +7,5 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
-  server: {
-    proxy: {
-      '/videos': {
-        target: 'http://localhost:5173',
-        rewrite: (path) => `/src/assets${path}`
-      }
-    }
-  },
   assetsInclude: ['**/*.mp4']
 });
