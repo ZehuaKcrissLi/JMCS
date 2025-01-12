@@ -23,7 +23,7 @@ export default function Navbar() {
                   : 'text-gray-600 hover:bg-purple-50'
               }`}
             >
-              生成视频
+              美食短视频混剪
             </Link>
             <Link
               to="/history"
