@@ -5,25 +5,27 @@ import { videoService } from '../../services/api';
 import { PRODUCTS, DISH_NAMES } from '../../config/products';
 import { VideoCarousel } from './VideoCarousel';
 import type { VideoGenerateRequest } from '../../types/api';
+import { useVideoGenerator } from '../../context/VideoGeneratorContext';
 
 export default function VideoGenerator() {
+  const { 
+    state: { selectedProduct, selectedDishes, prompt, showPrompt, generatedVideos },
+    setSelectedProduct,
+    setSelectedDishes,
+    setPrompt,
+    setShowPrompt,
+    setGeneratedVideos
+  } = useVideoGenerator();
+  
   const { addRecord } = useHistory();
-  const [selectedProduct, setSelectedProduct] = useState('');
-  const [selectedDishes, setSelectedDishes] = useState<string[]>([]);
-  const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [generatedVideos, setGeneratedVideos] = useState<Array<{
-    dishName: string;
-    videos: Array<{ id: number; url: string; }>;
-  }>>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleDishSelect = (dish: string) => {
-    setSelectedDishes(prev => 
-      prev.includes(dish) 
-        ? prev.filter(d => d !== dish)
-        : [...prev, dish]
+    setSelectedDishes(selectedDishes.includes(dish)
+      ? selectedDishes.filter(d => d !== dish)
+      : [...selectedDishes, dish]
     );
   };
 
@@ -44,7 +46,7 @@ export default function VideoGenerator() {
       await videoService.generatePrompt(
         { productName, dishes: dishNames },
         (chunk) => {
-          setPrompt(prev => prev + chunk);
+          setPrompt(currentPrompt => (currentPrompt || '') + chunk);
         }
       );
     } catch (error) {
@@ -56,19 +58,22 @@ export default function VideoGenerator() {
   };
 
   const handleGenerate = async () => {
-    if (!selectedProduct || selectedDishes.length === 0) {
-      alert('请选择产品和至少一个菜品');
+    if (!selectedProduct || selectedDishes.length === 0 || !prompt) {
+      alert('请选择产品和菜品，并生成视频文案');
       return;
     }
 
     setIsGenerating(true);
+    setIsLoading(true);
 
     try {
       const request: VideoGenerateRequest = {
         productId: selectedProduct,
         dishes: selectedDishes,
-        prompt: prompt || undefined
+        prompt: prompt
       };
+
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
       const response = await videoService.generateVideos(request);
       
@@ -100,6 +105,7 @@ export default function VideoGenerator() {
       alert('生成视频失败，请重试');
     } finally {
       setIsGenerating(false);
+      setIsLoading(false);
     }
   };
 
@@ -177,7 +183,7 @@ export default function VideoGenerator() {
             {showPrompt && (
               <div className="relative">
                 <textarea
-                  value={prompt}
+                  value={prompt || ''}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="正在生成文案..."
                   className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
@@ -197,9 +203,9 @@ export default function VideoGenerator() {
             
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || !selectedProduct || selectedDishes.length === 0}
+              disabled={isGenerating || !selectedProduct || selectedDishes.length === 0 || !prompt}
               className={`w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-md ${
-                isGenerating || !selectedProduct || selectedDishes.length === 0
+                isGenerating || !selectedProduct || selectedDishes.length === 0 || !prompt
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-purple-600 hover:bg-purple-700'
               }`}
@@ -215,8 +221,14 @@ export default function VideoGenerator() {
         </div>
       </div>
 
-      {/* Generated Videos Display */}
-      {generatedVideos.length > 0 && (
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+          <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+          {/* <p className="text-gray-600">正在生成视频，请稍候...</p> */}
+        </div>
+      )}
+
+      {generatedVideos.length > 0 && !isLoading && (
         <div className="space-y-8">
           {generatedVideos.map((dishVideos, index) => (
             <div key={index} className="bg-white rounded-xl shadow-md p-6">
