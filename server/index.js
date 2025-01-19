@@ -24,5 +24,5 @@ const port = 8081;
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
   // 打印实际的文件路径
-  console.log('Video path:', path.join(__dirname, 'public/videos/demo/demo.mp4'));
+  console.log('Video path:', path.join(__dirname, 'public/videos/demo2/demo.mp4'));
 }); 
