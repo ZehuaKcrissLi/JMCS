@@ -4,7 +4,7 @@ import { useHistory } from '../../context/HistoryContext';
 import { videoService } from '../../services/api';
 import { PRODUCTS, DISH_NAMES } from '../../config/products';
 import { VideoCarousel } from './VideoCarousel';
-import type { VideoGenerateRequest, Video } from '../../types/api';
+import type { VideoGenerateRequest } from '../../types/api';
 import { useVideoGenerator } from '../../context/VideoGeneratorContext';
 
 export default function VideoGenerator() {
@@ -23,6 +23,8 @@ export default function VideoGenerator() {
   const [isPromptComplete, setIsPromptComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentVideos, setCurrentVideos] = useState<Record<string, number>>({});
+  const [numVideos, setNumVideos] = useState(5);
+  const [showNumVideosSelect, setShowNumVideosSelect] = useState(false);
 
   const handleDishSelect = (dish: string) => {
     setSelectedDishes(selectedDishes.includes(dish)
@@ -37,6 +39,11 @@ export default function VideoGenerator() {
       return;
     }
 
+    setShowNumVideosSelect(true);
+  };
+
+  const handleConfirmNumVideos = async () => {
+    setShowNumVideosSelect(false);
     setIsGeneratingPrompt(true);
     setIsPromptComplete(false);
     setShowPrompt(true);
@@ -44,10 +51,10 @@ export default function VideoGenerator() {
 
     try {
       const productName = PRODUCTS.find(p => p.id === selectedProduct)?.name || '';
-      let currentPrompt = '';
 
+      let currentPrompt = '';
       await videoService.generatePrompt(
-        { productName, dishes: selectedDishes },
+        { productName, dishes: selectedDishes, numVideos },
         (chunk: string) => {
           currentPrompt += chunk;
           setPrompt(currentPrompt);
@@ -75,18 +82,32 @@ export default function VideoGenerator() {
       const request: VideoGenerateRequest = {
         productId: selectedProduct,
         dishes: selectedDishes,
-        prompt: prompt
+        prompt: prompt,
+        numVideos
       };
-
-      await new Promise(resolve => setTimeout(resolve, 5000));
 
       const response = await videoService.generateVideos(request);
       
       if (response.success) {
         const newGeneratedVideos = Object.entries(response.data).map(([dishId, videos]) => ({
           dishName: DISH_NAMES[dishId],
-          videos: videos
+          videos: videos.map(video => ({
+            ...video,
+            title: video.title || `${DISH_NAMES[dishId]} - 视频 ${video.id}`,
+            thumbnail: video.thumbnail || video.url,
+            stats: video.stats || null
+          }))
         }));
+
+        const baseWaitTime = 8000; // 基础等待时间 8 秒
+        const additionalTimePerVideo = 4000; // 每个额外视频增加 4 秒
+        const randomFactor = Math.random() * 4000; // 0-4 秒的随机时间
+        const totalWaitTime = Math.min(
+          baseWaitTime + (numVideos - 1) * additionalTimePerVideo + randomFactor,
+          35000 // 最大等待时间 35 秒
+        );
+
+        await new Promise(resolve => setTimeout(resolve, totalWaitTime));
 
         setGeneratedVideos(newGeneratedVideos);
         
@@ -96,12 +117,7 @@ export default function VideoGenerator() {
           timestamp: Date.now(),
           dishes: newGeneratedVideos.map(dish => ({
             dishName: dish.dishName,
-            videos: dish.videos.map(v => ({
-              id: v.id,
-              title: `${dish.dishName} - 视频 ${v.id}`,
-              thumbnail: v.url,
-              stats: null
-            }))
+            videos: dish.videos
           }))
         });
       }
@@ -111,66 +127,6 @@ export default function VideoGenerator() {
     } finally {
       setIsGenerating(false);
       setIsLoading(false);
-    }
-  };
-
-  const handleSplitVideo = (dishId: string, originalVideo: Video) => {
-    // 复制视频并更新状态
-    const updatedVideos = generatedVideos.map(dishVideos => {
-      if (dishVideos.dishName === DISH_NAMES[dishId]) {
-        // 复制原始视频两次，生成三个相同的视频
-        const newVideoList = [
-          originalVideo,
-          { ...originalVideo, id: originalVideo.id + 1 },
-          { ...originalVideo, id: originalVideo.id + 2 }
-        ];
-        return { ...dishVideos, videos: newVideoList };
-      }
-      return dishVideos;
-    });
-    
-    setGeneratedVideos(updatedVideos);
-
-    // 查找原始视频的历史记录以获取stats
-    const originalStats = generatedVideos
-      .find(dish => dish.dishName === DISH_NAMES[dishId])
-      ?.videos[0]?.stats || null;
-
-    // 更新当前视频的历史记录
-    const currentDishVideos = updatedVideos.find(
-      dish => dish.dishName === DISH_NAMES[dishId]
-    );
-
-    if (currentDishVideos) {
-      const historyUpdate = {
-        dishName: currentDishVideos.dishName,
-        videos: currentDishVideos.videos.map(video => ({
-          id: video.id,
-          title: `${currentDishVideos.dishName} - 视频 ${video.id}`,
-          thumbnail: video.url,
-          stats: video.stats || originalStats // 使用视频自己的stats或原始视频的stats
-        }))
-      };
-
-      // 更新历史记录中当前菜品的视频列表
-      addRecord({
-        id: Date.now(),
-        productName: PRODUCTS.find(p => p.id === selectedProduct)?.name || '',
-        timestamp: Date.now(),
-        dishes: generatedVideos.map(dish => 
-          dish.dishName === DISH_NAMES[dishId] 
-            ? historyUpdate 
-            : {
-                dishName: dish.dishName,
-                videos: dish.videos.map(v => ({
-                  id: v.id,
-                  title: `${dish.dishName} - 视频 ${v.id}`,
-                  thumbnail: v.url,
-                  stats: v.stats || null
-                }))
-              }
-        )
-      });
     }
   };
 
@@ -253,11 +209,36 @@ export default function VideoGenerator() {
               {isGeneratingPrompt ? '生成文案中...' : 'GPT生成视频文案'}
             </button>
 
+            {showNumVideosSelect && (
+              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  你想为每个菜品生成几个混剪视频？
+                </h3>
+                <div className="flex gap-4">
+                  <select
+                    value={numVideos}
+                    onChange={(e) => setNumVideos(Number(e.target.value))}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    {[1, 2, 3, 4, 5].map(num => (
+                      <option key={num} value={num}>{num}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleConfirmNumVideos}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                  >
+                    确定
+                  </button>
+                </div>
+              </div>
+            )}
+
             {showPrompt && (
               <div className="relative">
                 <textarea
                   value={prompt || ''}
-                  onChange={(e) => setPrompt(e.target.value)}
+                  readOnly
                   placeholder="正在生成文案..."
                   className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
                   disabled={isGeneratingPrompt}
@@ -304,10 +285,6 @@ export default function VideoGenerator() {
       {generatedVideos.length > 0 && !isLoading && (
         <div className="space-y-8">
           {generatedVideos.map((dishVideos, index) => {
-            const dishId = Object.entries(DISH_NAMES).find(
-              ([_, name]) => name === dishVideos.dishName
-            )?.[0];
-
             const currentVideoId = currentVideos[dishVideos.dishName] || dishVideos.videos[0].id;
 
             return (
@@ -319,11 +296,6 @@ export default function VideoGenerator() {
                   <VideoCarousel 
                     videos={dishVideos.videos}
                     onVideoChange={(video) => handleVideoChange(dishVideos.dishName, video)}
-                    onSplit={
-                      dishId && dishVideos.videos.length === 1
-                        ? () => handleSplitVideo(dishId, dishVideos.videos[0])
-                        : undefined
-                    }
                   />
                 </div>
               </div>

@@ -2,18 +2,18 @@ export const PRODUCTS = [
   { 
     id: 'xiaosuroufen', 
     name: '小酥肉粉', 
-    dishes: ['zhaxiaosurou', 'suzhaouhe', 'jimihua']
+    dishes: ['zhaxiaosurou', 'zhashucai', 'zhajilei_xsrf']
   },
   { 
-    id: 'kaorouliao', 
+    id: 'zhajiguofen', 
     name: '炸鸡裹粉', 
-    dishes: ['zhajichi'] 
+    dishes: ['zhajilei_zjgf'] 
   },
 ] as const;
 
 export const DISH_NAMES: Record<string, string> = {
   zhaxiaosurou: '炸小酥肉',
-  suzhaouhe: '酥炸藕盒',
-  jimihua: '鸡米花',
-  zhajichi: '炸鸡翅'
+  zhashucai: '炸蔬菜',
+  zhajilei_xsrf: '炸鸡类',
+  zhajilei_zjgf: '炸鸡类'
 };

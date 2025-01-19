@@ -1,45 +1,29 @@
 import React, { createContext, useContext, useState } from 'react';
+import type { Video } from '../types/api';
 
-interface VideoStats {
-  views: number;
-  followers: number;
-  retention: number;
-  conversion: number;
-  sales: number;
-}
-
-interface Video {
-  id: number;
-  title: string;
-  thumbnail: string;
-  stats: VideoStats | null;
-}
-
-interface DishVideos {
-  dishName: string;
-  videos: Video[];
-}
-
-export interface ProductRecord {
+interface HistoryRecord {
   id: number;
   productName: string;
   timestamp: number;
-  dishes: DishVideos[];
+  dishes: {
+    dishName: string;
+    videos: Video[];
+  }[];
 }
 
 interface HistoryContextType {
-  history: ProductRecord[];
-  addRecord: (record: ProductRecord) => void;
+  history: HistoryRecord[];
+  addRecord: (record: HistoryRecord) => void;
   clearHistory: () => void;
-  updateVideoStats: (recordId: number, dishName: string, videoIndex: number, stats: VideoStats) => void;
+  updateVideoStats: (recordId: number, dishName: string, videoIndex: number, stats: Video['stats']) => void;
 }
 
 const HistoryContext = createContext<HistoryContextType | undefined>(undefined);
 
 export function HistoryProvider({ children }: { children: React.ReactNode }) {
-  const [history, setHistory] = useState<ProductRecord[]>([]);
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
 
-  const addRecord = (record: ProductRecord) => {
+  const addRecord = (record: HistoryRecord) => {
     setHistory(prev => [record, ...prev]);
   };
 
@@ -47,7 +31,7 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
     setHistory([]);
   };
 
-  const updateVideoStats = (recordId: number, dishName: string, videoIndex: number, stats: VideoStats) => {
+  const updateVideoStats = (recordId: number, dishName: string, videoIndex: number, stats: Video['stats']) => {
     setHistory(prev => prev.map(record => {
       if (record.id === recordId) {
         return {
@@ -56,15 +40,9 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
             if (dish.dishName === dishName) {
               return {
                 ...dish,
-                videos: dish.videos.map((video, idx) => {
-                  if (idx === videoIndex) {
-                    return {
-                      ...video,
-                      stats: stats
-                    };
-                  }
-                  return video;
-                })
+                videos: dish.videos.map((video, index) => 
+                  index === videoIndex ? { ...video, stats } : video
+                )
               };
             }
             return dish;

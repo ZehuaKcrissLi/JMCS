@@ -1,24 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, ChevronLeft, ChevronRight, Split } from 'lucide-react';
-import type { VideoStats } from '../../types/api';
-
-interface CarouselVideo {
-  id: number;
-  url: string;
-  stats?: VideoStats | null;
-}
+import { Play, Pause, ChevronLeft, ChevronRight } from 'lucide-react';
+import type { Video } from '../../types/api';
 
 interface VideoCarouselProps {
-  videos: CarouselVideo[];
-  onSplit?: () => void;
-  onVideoChange?: (video: CarouselVideo) => void;
+  videos: Video[];
+  onVideoChange?: (video: Video) => void;
 }
 
-export function VideoCarousel({ videos, onSplit, onVideoChange }: VideoCarouselProps) {
+export function VideoCarousel({ videos, onVideoChange }: VideoCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (onVideoChange) {
@@ -29,6 +25,7 @@ export function VideoCarousel({ videos, onSplit, onVideoChange }: VideoCarouselP
   useEffect(() => {
     setIsPlaying(false);
     setError(null);
+    setProgress(0);
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
     }
@@ -70,24 +67,66 @@ export function VideoCarousel({ videos, onSplit, onVideoChange }: VideoCarouselP
     setIsPlaying(false);
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
+      setProgress(0);
     }
   };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+      setProgress(progress);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+    }
+  };
+
+  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (progressBarRef.current && videoRef.current) {
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const percentage = (x / rect.width) * 100;
+      const time = (percentage / 100) * videoRef.current.duration;
+      videoRef.current.currentTime = time;
+      setProgress(percentage);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const currentVideo = videos[currentIndex];
 
   return (
     <div className="relative aspect-[9/16] bg-gray-100 rounded-lg overflow-hidden">
       <video
         ref={videoRef}
-        src={videos[currentIndex].url}
+        src={currentVideo.url}
         className="w-full h-full object-cover"
         onEnded={handleVideoEnd}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
         playsInline
         loop={false}
         onError={(e) => {
-          console.error('视频加载错误:', e);
-          setError('视频加载失败');
+          console.error('视频加载错误:', {
+            error: e,
+            videoUrl: currentVideo.url,
+            videoElement: videoRef.current
+          });
+          setError(`视频加载失败: ${currentVideo.url}`);
         }}
         onLoadedData={() => {
-          console.log('视频加载成功:', videos[currentIndex].url);
+          console.log('视频加载成功:', {
+            url: currentVideo.url,
+            duration: videoRef.current?.duration
+          });
           setError(null);
         }}
       />
@@ -128,20 +167,29 @@ export function VideoCarousel({ videos, onSplit, onVideoChange }: VideoCarouselP
         </>
       )}
       
-      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-3 bg-black/30 backdrop-blur-sm">
-        <div className="text-white text-sm font-medium">
-          {currentIndex + 1} / {videos.length}
+      <div className="absolute bottom-0 left-0 right-0 bg-black/30 backdrop-blur-sm">
+        {/* 进度条 */}
+        <div 
+          ref={progressBarRef}
+          className="h-1 bg-gray-600 cursor-pointer relative"
+          onClick={handleProgressBarClick}
+        >
+          <div 
+            className="absolute top-0 left-0 h-full bg-purple-500 transition-all duration-100"
+            style={{ width: `${progress}%` }}
+          />
         </div>
-        {onSplit && videos.length === 1 && (
-          <button
-            onClick={onSplit}
-            className="bg-purple-600/90 hover:bg-purple-700/90 px-6 py-2 rounded-full text-white text-sm font-medium flex items-center gap-2 transition-colors shadow-lg"
-            title="生成更多视频"
-          >
-            <Split className="w-5 h-5" />
-            点击裂变生成更多视频
-          </button>
-        )}
+
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="text-white text-sm font-medium flex items-center gap-2">
+            <span>{formatTime(videoRef.current?.currentTime || 0)}</span>
+            <span>/</span>
+            <span>{formatTime(duration)}</span>
+          </div>
+          <div className="text-white text-sm font-medium">
+            {currentIndex + 1} / {videos.length}
+          </div>
+        </div>
       </div>
     </div>
   );

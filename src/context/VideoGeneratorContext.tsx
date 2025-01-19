@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState } from 'react';
+import type { Video } from '../types/api';
 
 interface GeneratedVideo {
   dishName: string;
-  videos: Array<{ id: number; url: string; }>;
+  videos: Video[];
 }
 
 interface VideoGeneratorState {

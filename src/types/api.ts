@@ -9,13 +9,17 @@ export interface VideoStats {
 export interface Video {
   id: number;
   url: string;
+  script?: string;
   stats?: VideoStats | null;
+  title: string;
+  thumbnail: string;
 }
 
 export interface VideoGenerateRequest {
   productId: string;
   dishes: string[];
   prompt: string;
+  numVideos: number;
 }
 
 export interface VideoGenerateResponse {
@@ -36,4 +40,5 @@ export interface VideoResponse {
 export interface PromptGenerateRequest {
   productName: string;
   dishes: string[];
+  numVideos: number;
 }
